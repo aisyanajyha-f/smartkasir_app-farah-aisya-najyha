@@ -83,7 +83,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Aplikasi Kasir Point of Sale Digital',
+              'Farah Aisya Najyha - E030424014',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.white70,
