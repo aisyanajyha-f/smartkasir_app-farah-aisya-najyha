@@ -19,6 +19,9 @@ class _FormKaryawanPageState extends State<FormKaryawanPage> {
   String _peranTerpilih = 'Kasir';
   final List<String> _daftarPeran = ['Kasir', 'Admin', 'Manajer'];
   bool _sedangMenyimpan = false;
+  
+  // VARIABEL TAMBAHAN: Untuk mengontrol visibilitas PIN (Ikon Mata)
+  bool _obscurePin = true;
 
   bool get _isEditMode => widget.karyawan != null;
 
@@ -141,10 +144,12 @@ class _FormKaryawanPageState extends State<FormKaryawanPage> {
                 },
               ),
               const SizedBox(height: 16),
+              
+              // INPUT PIN DENGAN IKON MATA (SHOW / HIDE)
               TextFormField(
                 controller: _pinController,
                 keyboardType: TextInputType.number,
-                obscureText: true,
+                obscureText: _obscurePin, // Terikat pada status tombol mata
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(4),
@@ -153,6 +158,18 @@ class _FormKaryawanPageState extends State<FormKaryawanPage> {
                   labelText: 'PIN Kasir (4 Digit Angka)',
                   hintText: 'Contoh: 1234',
                   prefixIcon: const Icon(Icons.lock_outline),
+                  // Tombol Ikon Mata di bagian suffix
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePin = !_obscurePin; // Toggle status sembunyi/tampil
+                      });
+                    },
+                  ),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   filled: true,
                   fillColor: Colors.white,
