@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/karyawan.dart';
 import '../helpers/database_helper.dart';
-import 'form_karyawan_page.dart';
+import '../models/karyawan.dart';
 
 class KelolaKaryawanPage extends StatefulWidget {
   const KelolaKaryawanPage({super.key});
@@ -12,111 +11,202 @@ class KelolaKaryawanPage extends StatefulWidget {
 }
 
 class _KelolaKaryawanPageState extends State<KelolaKaryawanPage> {
-  late Future<List<Karyawan>> _karyawanFuture;
-  int? _activeCashierId;
+  List<Karyawan> _karyawanList = [];
+  bool _isLoading = true;
   String _activeCashierName = 'Belum Ditentukan';
 
   @override
   void initState() {
     super.initState();
-    _muatData();
+    _muatDataKaryawan();
   }
 
-  Future<void> _muatData() async {
+  Future<void> _muatDataKaryawan() async {
+    setState(() => _isLoading = true);
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _activeCashierId = prefs.getInt('active_cashier_id');
-      _activeCashierName = prefs.getString('active_cashier_name') ?? 'Belum Ditentukan';
-      _karyawanFuture = DatabaseHelper.instance.getAllKaryawan();
-    });
-  }
-
-  Future<void> _setKasirAktif(Karyawan staf) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('active_cashier_id', staf.id!);
-    await prefs.setString('active_cashier_name', staf.namaKaryawan);
-    setState(() {
-      _activeCashierId = staf.id;
-      _activeCashierName = staf.namaKaryawan;
-    });
+    final data = await DatabaseHelper.instance.getAllKaryawan();
     if (!mounted) return;
+    setState(() {
+      _activeCashierName =
+          prefs.getString('active_cashier_name') ?? 'Belum Ditentukan';
+      _karyawanList = data;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _setKasirAktif(Karyawan karyawan) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('active_cashier_name', karyawan.namaKaryawan);
+    if (!mounted) return;
+    setState(() {
+      _activeCashierName = karyawan.namaKaryawan;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Kasir aktif giliran saat ini: "${staf.namaKaryawan}"'),
-        backgroundColor: Colors.blue.shade700,
+        content: Text('Kasir aktif diubah menjadi ${karyawan.namaKaryawan}.'),
+        backgroundColor: const Color(0xFF1E3A8A),
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  void _konfirmasiHapusKaryawan(Karyawan staf) {
-    if (staf.id == _activeCashierId) {
+  void _tampilkanFormKaryawan({Karyawan? karyawan}) {
+    final formKey = GlobalKey<FormState>();
+    final namaController = TextEditingController(
+      text: karyawan?.namaKaryawan ?? '',
+    );
+    final pinController = TextEditingController(
+      text: karyawan?.pin ?? '',
+    );
+    String peranTerpilih = karyawan?.peran ?? 'Kasir';
+    bool obscurePin = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                karyawan == null ? 'Tambah Karyawan' : 'Edit Karyawan',
+              ),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: namaController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Karyawan',
+                          prefixIcon: Icon(Icons.person_outline),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Nama karyawan wajib diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: pinController,
+                        obscureText: obscurePin,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        decoration: InputDecoration(
+                          labelText: 'PIN (4-6 Digit)',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePin
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                obscurePin = !obscurePin;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().length < 4) {
+                            return 'PIN minimal 4 digit';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: peranTerpilih,
+                        decoration: const InputDecoration(
+                          labelText: 'Peran / Jabatan',
+                          prefixIcon: Icon(Icons.badge_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Kasir',
+                            child: Text('Kasir'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Manajer',
+                            child: Text('Manajer'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() {
+                              peranTerpilih = val;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+                    final dataBaru = Karyawan(
+                      id: karyawan?.id,
+                      namaKaryawan: namaController.text.trim(),
+                      pin: pinController.text.trim(),
+                      peran: peranTerpilih,
+                    );
+
+                    if (karyawan == null) {
+                      await DatabaseHelper.instance.insertKaryawan(dataBaru);
+                    } else {
+                      await DatabaseHelper.instance.updateKaryawan(dataBaru);
+                    }
+
+                    if (!ctx.mounted) return;
+                    Navigator.pop(ctx);
+                    _muatDataKaryawan();
+                  },
+                  child: const Text('Simpan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _hapusKaryawan(Karyawan karyawan) async {
+    if (karyawan.namaKaryawan == _activeCashierName) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Karyawan "${staf.namaKaryawan}" sedang aktif bertugas! Ganti kasir aktif terlebih dahulu.'),
-          backgroundColor: Colors.red.shade700,
+        const SnackBar(
+          content: Text(
+            'Karyawan yang sedang berstatus kasir aktif tidak dapat dihapus!',
+          ),
+          backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Hapus Karyawan?'),
-          ],
-        ),
-        content: Text('Apakah Anda yakin ingin menghapus staf "${staf.namaKaryawan}" (${staf.peran})? Data tidak dapat dipulihkan.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await DatabaseHelper.instance.deleteKaryawan(staf.id!);
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Data staf "${staf.namaKaryawan}" telah dihapus!'),
-                  backgroundColor: Colors.red.shade700,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-              _muatData();
-            },
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildRoleBadge(String peran) {
-    Color bg;
-    Color fg;
-    if (peran == 'Manajer') {
-      bg = Colors.amber.shade100;
-      fg = Colors.amber.shade900;
-    } else if (peran == 'Admin') {
-      bg = Colors.blue.shade100;
-      fg = Colors.blue.shade900;
-    } else {
-      bg = Colors.green.shade100;
-      fg = Colors.green.shade900;
+    if (karyawan.id != null) {
+      await DatabaseHelper.instance.deleteKaryawan(karyawan.id!);
+      _muatDataKaryawan();
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
-      child: Text(peran, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg)),
-    );
   }
 
   @override
@@ -124,45 +214,47 @@ class _KelolaKaryawanPageState extends State<KelolaKaryawanPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Kelola Karyawan & Kasir', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          'Kelola Karyawan & Shift',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF1E3A8A),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
         children: [
           Container(
+            width: double.infinity,
             margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withOpacity(0.15),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              color: const Color(0xFF1E3A8A),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                const CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Colors.white24,
-                  child: Icon(Icons.verified_user, color: Colors.amber, size: 26),
-                ),
-                const SizedBox(width: 14),
+                const Icon(Icons.verified_user, color: Color(0xFFFBBF24)),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('KASIR AKTIF BERJAGA SAAT INI', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 2),
-                      Text(_activeCashierName, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'KASIR AKTIF SAAT INI',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        _activeCashierName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -170,109 +262,75 @@ class _KelolaKaryawanPageState extends State<KelolaKaryawanPage> {
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<Karyawan>>(
-              future: _karyawanFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Terjadi kesalahan database: ${snapshot.error}'));
-                }
-                final daftarStaf = snapshot.data ?? [];
-                if (daftarStaf.isEmpty) {
-                  return const Center(child: Text('Belum ada data karyawan terdaftar.'));
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                  itemCount: daftarStaf.length,
-                  itemBuilder: (context, index) {
-                    final staf = daftarStaf[index];
-                    final isActive = staf.id == _activeCashierId;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isActive ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
-                          width: isActive ? 2 : 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        leading: CircleAvatar(
-                          backgroundColor: isActive ? const Color(0xFF1E3A8A) : Colors.grey.shade200,
-                          foregroundColor: isActive ? Colors.white : Colors.grey.shade700,
-                          child: Text(
-                            staf.namaKaryawan.isNotEmpty ? staf.namaKaryawan[0].toUpperCase() : '?',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        title: Row(
-                          children: [
-                            Text(staf.namaKaryawan, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                            const SizedBox(width: 8),
-                            _buildRoleBadge(staf.peran),
-                          ],
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text('PIN: **** | ID: #${staf.id}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                isActive ? Icons.star : Icons.star_border,
-                                color: isActive ? Colors.amber.shade700 : Colors.grey,
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _karyawanList.isEmpty
+                    ? const Center(child: Text('Belum ada data karyawan.'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _karyawanList.length,
+                        itemBuilder: (context, index) {
+                          final k = _karyawanList[index];
+                          final isAktif = k.namaKaryawan == _activeCashierName;
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: isAktif
+                                    ? const Color(0xFF0D9488)
+                                    : const Color(0xFFE2E8F0),
+                                child: Icon(
+                                  Icons.person,
+                                  color: isAktif ? Colors.white : Colors.black87,
+                                ),
                               ),
-                              tooltip: isActive ? 'Kasir Aktif' : 'Set sebagai Kasir Aktif',
-                              onPressed: () => _setKasirAktif(staf),
+                              title: Text(
+                                k.namaKaryawan,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text('Peran: ${k.peran}'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      isAktif ? Icons.star : Icons.star_border,
+                                      color: isAktif
+                                          ? Colors.amber.shade700
+                                          : Colors.grey,
+                                    ),
+                                    tooltip: 'Jadikan Kasir Aktif',
+                                    onPressed: () => _setKasirAktif(k),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      color: Color(0xFF1E3A8A),
+                                    ),
+                                    onPressed: () =>
+                                        _tampilkanFormKaryawan(karyawan: k),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () => _hapusKaryawan(k),
+                                  ),
+                                ],
+                              ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF1E3A8A)),
-                              tooltip: 'Edit Data',
-                              onPressed: () async {
-                                final refresh = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => FormKaryawanPage(karyawan: staf)),
-                                );
-                                if (refresh == true) _muatData();
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                              tooltip: 'Hapus Staf',
-                              onPressed: () => _konfirmasiHapusKaryawan(staf),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                );
-              },
-            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final refresh = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const FormKaryawanPage()),
-          );
-          if (refresh == true) _muatData();
-        },
+        onPressed: () => _tampilkanFormKaryawan(),
         backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add),

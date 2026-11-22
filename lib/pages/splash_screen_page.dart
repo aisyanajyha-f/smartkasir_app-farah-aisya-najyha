@@ -45,7 +45,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1E3A8A), // Biru Navy Elegan
+      backgroundColor: const Color(0xFFFBCFE8), // Pink Muda Soft
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -58,7 +58,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: const Color.fromARGB(255, 213, 34, 115).withValues(alpha: 0.2),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
@@ -67,7 +67,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
               child: const Icon(
                 Icons.point_of_sale_rounded,
                 size: 72,
-                color: Color(0xFF1E3A8A),
+                color: Color(0xFFDB2777),
               ),
             ),
             const SizedBox(height: 24),
@@ -77,7 +77,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Color(0xFF831843),
                 letterSpacing: 1.2,
               ),
             ),
@@ -86,7 +86,8 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
               'Farah Aisya Najyha - E030424014',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.white70,
+                color: Color(0xFF9D174D),
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 36),
@@ -95,7 +96,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
               width: 28,
               height: 28,
               child: CircularProgressIndicator(
-                color: Colors.amber,
+                color: Color(0xFFDB2777),
                 strokeWidth: 3,
               ),
             ),
@@ -104,13 +105,16 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
               'Menyiapkan sistem SmartKasir ($_durasiDetik detik)...', // [TANTANGAN 2]: Teks keterangan baru
               style: const TextStyle(
                 fontSize: 12,
-                color: Colors.white70,
+                color: Color(0xFF9D174D),
               ),
             ),
             const SizedBox(height: 40),
-            Text(
+            const Text(
               'Versi 1.0.0 Modul Pertemuan 10',
-              style: TextStyle(fontSize: 11, color: Colors.blue.shade200),
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFFBE185D),
+              ),
             ),
           ],
         ),
